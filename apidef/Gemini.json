@@ -1,0 +1,111 @@
+{
+    "default-endpoint": "https://generativelanguage.googleapis.com/v1beta",
+    "models": {
+        "endpoint": "/models",
+        "method": "GET",
+        "headers": {
+            "x-goog-api-key": "<<api_key>>"
+        },
+        "result": "models"
+    },
+    "Text-Text": {
+        "endpoint": "/models/<<model>>:generateContent",
+        "headers": {
+            "x-goog-api-key": "<<api_key>>",
+            "Content-Type": "application/json"
+        },
+        "payload": {
+            "contents": [{
+                "role": "user",
+                "parts": [{
+                    "text": "<<prompt>>"
+                }]
+            }],
+            "systemInstruction": "<<system_prompt>>",
+            "generationConfig": {
+                "maxOutputTokens": 10000
+            }
+        },
+        "result": "candidates[0].content.parts[0].text"
+    },
+    "Text-Image": {
+        "endpoint": "/models/<<model>>:generateContent",
+        "headers": {
+            "x-goog-api-key": "<<api_key>>",
+            "Content-Type": "application/json"
+        },
+        "payload": {
+            "contents": [{
+                "role": "user",
+                "parts": [{
+                    "text": "<<prompt>>"
+                }]
+            }],
+            "systemInstruction": "<<system_prompt>>",
+            "generationConfig": {
+                "maxOutputTokens": 32768,
+                "responseModalities": ["image", "text"],
+                "imageConfig": {
+                    "aspectRatio": "5:4",
+                    "imageSize": "2K"
+                }
+            }
+        },
+        "result": "candidates[0].content.parts[0].inlineData.data"
+    },
+    "Image-Text": {
+        "endpoint": "/models/<<model>>:generateContent",
+        "headers": {
+            "x-goog-api-key": "<<api_key>>",
+            "Content-Type": "application/json"
+        },
+        "payload": {
+            "contents": [{
+                "role": "user",
+                "parts": [{
+                    "text": "<<prompt>>"
+                }, {
+                    "inlineData": {
+                        "mimeType": "image/png",
+                        "data": "<<image>>"
+                    }
+                }]
+            }],
+            "systemInstruction": "<<system_prompt>>",
+            "generationConfig": {
+                "maxOutputTokens": 10000
+            }
+        },
+        "result": "candidates[0].content.parts[0].text"
+    },
+    "Image-Image": {
+        "endpoint": "/models/<<model>>:generateContent",
+        "headers": {
+            "x-goog-api-key": "<<api_key>>",
+            "Content-Type": "application/json"
+        },
+        "payload": {
+            "contents": [{
+                "role": "user",
+                "parts": [{
+                    "text": "<<prompt>>"
+                }, {
+                    "inlineData": {
+                        "mimeType": "image/png",
+                        "data": "<<image>>"
+                    }
+                }]
+            }],
+            "systemInstruction": "<<system_prompt>>",
+            "generationConfig": {
+                "maxOutputTokens": 32768,
+                "responseModalities": ["image", "text"],
+                "imageConfig": {
+                    "aspectRatio": "5:4",
+                    "imageSize": "2K"
+                }
+            }
+        },
+        "result": "candidates[0].content.parts[0].inlineData.data"
+    }
+}

@@ -1,0 +1,38 @@
+{
+    "language": "nl",
+    "hotkey": {
+        "modifiers": 9,
+        "key": 86
+    },
+    "models": [],
+    "filters": [
+        {
+            "title": "Vertalen naar Engels",
+            "input": "text",
+            "output": "text",
+            "modelIndex": 0,
+            "prompt": "Vertaal naar het Engels."
+        },
+        {
+            "title": "Tekst uit afbeelding",
+            "input": "image",
+            "output": "text",
+            "modelIndex": 2,
+            "prompt": "Zet de tekst uit de afbeelding om naar tekst."
+        },
+        {
+            "title": "Afbeelding genereren",
+            "input": "text",
+            "output": "image",
+            "modelIndex": 1,
+            "prompt": "Genereer een afbeelding met de opgegeven tekst."
+        },
+        {
+            "title": "Anime-stijl conversie",
+            "input": "image",
+            "output": "image",
+            "modelIndex": 3,
+            "prompt": "Zet deze afbeelding om naar anime-stijl."
+        }
+    ]
+}

@@ -1,0 +1,38 @@
+{
+    "language": "zh",
+    "hotkey": {
+        "modifiers": 9,
+        "key": 86
+    },
+    "models": [],
+    "filters": [
+        {
+            "title": "翻译成英语",
+            "input": "text",
+            "output": "text",
+            "modelIndex": 0,
+            "prompt": "请翻译成英文。"
+        },
+        {
+            "title": "图片转文字",
+            "input": "image",
+            "output": "text",
+            "modelIndex": 2,
+            "prompt": "请将图片中的文字提取为文本。"
+        },
+        {
+            "title": "生成图像",
+            "input": "text",
+            "output": "image",
+            "modelIndex": 1,
+            "prompt": "根据给定文本生成一张图片。"
+        },
+        {
+            "title": "动漫风格转换",
+            "input": "image",
+            "output": "image",
+            "modelIndex": 3,
+            "prompt": "将这张图片转换成动漫风格。"
+        }
+    ]
+}

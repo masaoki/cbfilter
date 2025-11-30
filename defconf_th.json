@@ -1,0 +1,38 @@
+{
+    "language": "th",
+    "hotkey": {
+        "modifiers": 9,
+        "key": 86
+    },
+    "models": [],
+    "filters": [
+        {
+            "title": "แปลเป็นภาษาอังกฤษ",
+            "input": "text",
+            "output": "text",
+            "modelIndex": 0,
+            "prompt": "โปรดแปลเป็นภาษาอังกฤษ"
+        },
+        {
+            "title": "ถอดข้อความจากภาพ",
+            "input": "image",
+            "output": "text",
+            "modelIndex": 2,
+            "prompt": "กรุณาแปลงข้อความในรูปภาพเป็นข้อความ"
+        },
+        {
+            "title": "สร้างภาพ",
+            "input": "text",
+            "output": "image",
+            "modelIndex": 1,
+            "prompt": "สร้างภาพตามข้อความที่กำหนด"
+        },
+        {
+            "title": "แปลงเป็นสไตล์อนิเมะ",
+            "input": "image",
+            "output": "image",
+            "modelIndex": 3,
+            "prompt": "แปลงรูปนี้ให้เป็นสไตล์อนิเมะ"
+        }
+    ]
+}

@@ -1,0 +1,38 @@
+{
+    "language": "pt",
+    "hotkey": {
+        "modifiers": 9,
+        "key": 86
+    },
+    "models": [],
+    "filters": [
+        {
+            "title": "Traduzir para inglês",
+            "input": "text",
+            "output": "text",
+            "modelIndex": 0,
+            "prompt": "Traduza para o inglês."
+        },
+        {
+            "title": "Transcrever imagem",
+            "input": "image",
+            "output": "text",
+            "modelIndex": 2,
+            "prompt": "Converta o texto da imagem em texto."
+        },
+        {
+            "title": "Gerar imagem",
+            "input": "text",
+            "output": "image",
+            "modelIndex": 1,
+            "prompt": "Gere uma imagem com o texto fornecido."
+        },
+        {
+            "title": "Conversão estilo anime",
+            "input": "image",
+            "output": "image",
+            "modelIndex": 3,
+            "prompt": "Converta esta imagem para o estilo anime."
+        }
+    ]
+}

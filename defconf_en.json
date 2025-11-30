@@ -1,0 +1,38 @@
+{
+    "language": "en",
+    "hotkey": {
+        "modifiers": 9,
+        "key": 86
+    },
+    "models": [],
+    "filters": [
+        {
+            "title": "Translate to English",
+            "input": "text",
+            "output": "text",
+            "modelIndex": 0,
+            "prompt": "Translate into English."
+        },
+        {
+            "title": "Transcript",
+            "input": "image",
+            "output": "text",
+            "modelIndex": 2,
+            "prompt": "Output the text written on the image as text."
+        },
+        {
+            "title": "Generate Image",
+            "input": "text",
+            "output": "image",
+            "modelIndex": 1,
+            "prompt": "Generate an image with the given text."
+        },
+        {
+            "title": "Anime Style Conversion",
+            "input": "image",
+            "output": "image",
+            "modelIndex": 3,
+            "prompt": "Convert the given image to anime style."
+        }
+    ]
+}

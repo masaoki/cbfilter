@@ -1,0 +1,38 @@
+{
+    "language": "de",
+    "hotkey": {
+        "modifiers": 9,
+        "key": 86
+    },
+    "models": [],
+    "filters": [
+        {
+            "title": "Ins Englische übersetzen",
+            "input": "text",
+            "output": "text",
+            "modelIndex": 0,
+            "prompt": "Bitte ins Englische übersetzen."
+        },
+        {
+            "title": "Text aus Bild",
+            "input": "image",
+            "output": "text",
+            "modelIndex": 2,
+            "prompt": "Gib den Text aus dem Bild als Text aus."
+        },
+        {
+            "title": "Bild generieren",
+            "input": "text",
+            "output": "image",
+            "modelIndex": 1,
+            "prompt": "Erzeuge ein Bild mit dem angegebenen Text."
+        },
+        {
+            "title": "Anime-Stil umwandeln",
+            "input": "image",
+            "output": "image",
+            "modelIndex": 3,
+            "prompt": "Wandle dieses Bild in einen Anime-Stil um."
+        }
+    ]
+}

@@ -1,0 +1,38 @@
+{
+    "language": "ru",
+    "hotkey": {
+        "modifiers": 9,
+        "key": 86
+    },
+    "models": [],
+    "filters": [
+        {
+            "title": "Перевод на английский",
+            "input": "text",
+            "output": "text",
+            "modelIndex": 0,
+            "prompt": "Переведите на английский."
+        },
+        {
+            "title": "Текст из изображения",
+            "input": "image",
+            "output": "text",
+            "modelIndex": 2,
+            "prompt": "Извлеките текст, написанный на изображении."
+        },
+        {
+            "title": "Сгенерировать изображение",
+            "input": "text",
+            "output": "image",
+            "modelIndex": 1,
+            "prompt": "Создайте изображение по указанному тексту."
+        },
+        {
+            "title": "Преобразовать в стиль аниме",
+            "input": "image",
+            "output": "image",
+            "modelIndex": 3,
+            "prompt": "Преобразуйте это изображение в стиль аниме."
+        }
+    ]
+}

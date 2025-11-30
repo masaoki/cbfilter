@@ -1,0 +1,38 @@
+{
+    "language": "vi",
+    "hotkey": {
+        "modifiers": 9,
+        "key": 86
+    },
+    "models": [],
+    "filters": [
+        {
+            "title": "Dịch sang tiếng Anh",
+            "input": "text",
+            "output": "text",
+            "modelIndex": 0,
+            "prompt": "Hãy dịch sang tiếng Anh."
+        },
+        {
+            "title": "Nhận dạng chữ trong ảnh",
+            "input": "image",
+            "output": "text",
+            "modelIndex": 2,
+            "prompt": "Hãy trích xuất chữ trong hình ảnh thành văn bản."
+        },
+        {
+            "title": "Tạo hình ảnh",
+            "input": "text",
+            "output": "image",
+            "modelIndex": 1,
+            "prompt": "Tạo một hình ảnh theo nội dung văn bản."
+        },
+        {
+            "title": "Chuyển thành phong cách anime",
+            "input": "image",
+            "output": "image",
+            "modelIndex": 3,
+            "prompt": "Chuyển hình ảnh này sang phong cách anime."
+        }
+    ]
+}

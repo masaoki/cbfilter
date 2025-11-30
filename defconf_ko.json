@@ -1,0 +1,38 @@
+{
+    "language": "ko",
+    "hotkey": {
+        "modifiers": 9,
+        "key": 86
+    },
+    "models": [],
+    "filters": [
+        {
+            "title": "영어로 번역",
+            "input": "text",
+            "output": "text",
+            "modelIndex": 0,
+            "prompt": "영어로 번역해 주세요."
+        },
+        {
+            "title": "이미지 문자 추출",
+            "input": "image",
+            "output": "text",
+            "modelIndex": 2,
+            "prompt": "이미지에 적힌 글자를 텍스트로 출력해 주세요."
+        },
+        {
+            "title": "이미지 생성",
+            "input": "text",
+            "output": "image",
+            "modelIndex": 1,
+            "prompt": "주어진 텍스트로 이미지를 생성해 주세요."
+        },
+        {
+            "title": "애니메이션 스타일 변환",
+            "input": "image",
+            "output": "image",
+            "modelIndex": 3,
+            "prompt": "이 이미지를 애니메이션 스타일로 변환해 주세요."
+        }
+    ]
+}

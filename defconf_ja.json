@@ -1,0 +1,38 @@
+{
+    "language": "ja",
+    "hotkey": {
+        "modifiers": 9,
+        "key": 86
+    },
+    "models": [],
+    "filters": [
+        {
+            "title": "英語に翻訳",
+            "input": "text",
+            "output": "text",
+            "modelIndex": 0,
+            "prompt": "英語に翻訳してください。"
+        },
+        {
+            "title": "画像の文字起こし",
+            "input": "image",
+            "output": "text",
+            "modelIndex": 2,
+            "prompt": "画像に書かれている文字をテキストとして出力してください。"
+        },
+        {
+            "title": "画像生成",
+            "input": "text",
+            "output": "image",
+            "modelIndex": 1,
+            "prompt": "指定されたテキストで画像を生成してください。"
+        },
+        {
+            "title": "アニメ風変換",
+            "input": "image",
+            "output": "image",
+            "modelIndex": 3,
+            "prompt": "この画像をアニメ風に変換してください。"
+        }
+    ]
+}

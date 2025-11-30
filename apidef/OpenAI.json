@@ -1,0 +1,96 @@
+{
+    "default-endpoint": "https://api.openai.com/v1",
+    "models": {
+        "endpoint": "/models",
+        "method": "GET",
+        "headers": {
+            "Authorization": "Bearer <<api_key>>"
+        },
+        "result": "data"
+    },
+    "Text-Text": {
+        "endpoint": "/chat/completions",
+        "headers": {
+            "Authorization": "Bearer <<api_key>>",
+            "Content-Type": "application/json"
+        },
+        "payload": {
+            "model": "<<model>>",
+            "messages": [
+                {
+                    "role": "developer",
+                    "content": "<<system_prompt>>"
+                },
+                {
+                    "role": "user",
+                    "content": "<<prompt>>"
+                }
+            ]
+        },
+        "result": "choices[0].message.content"
+    },
+    "Image-Text": {
+        "endpoint": "/chat/completions",
+        "headers": {
+            "Authorization": "Bearer <<api_key>>",
+            "Content-Type": "application/json"
+        },
+        "payload": {
+            "model": "<<model>>",
+            "messages": [
+                {
+                    "role": "developer",
+                    "content": "<<system_prompt>>"
+                },
+                {
+                    "role": "user",
+                    "content": [{
+                        "type": "text",
+                        "text": "<<prompt>>"
+                    }, {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": "<<image_url>>"
+                        }
+                    }]
+                }
+            ]
+        },
+        "result": "choices[0].message.content"
+    },
+    "Text-Image": {
+        "endpoint": "/chat/completions",
+        "headers": {
+            "Authorization": "Bearer <<api_key>>",
+            "Content-Type": "application/json"
+        },
+        "payload": {
+            "model": "<<model>>",
+            "messages": [
+                {
+                    "role": "developer",
+                    "content": "<<system_prompt>>"
+                },
+                {
+                    "role": "user",
+                    "content": "<<prompt>>"
+                }
+            ],
+            "modalities": ["image", "text"]
+        },
+        "result": "choices[0].message.images[0].image_url.url"
+    },
+    "Image-Image": {
+        "endpoint": "/images/edits",
+        "headers": {
+            "Authorization": "Bearer <<api_key>>",
+            "Content-Type": "multipart/form-data"
+        },
+        "payload": {
+            "model": "<<model>>",
+            "image": "<<image>>",
+            "prompt": "<<prompt>>"
+        },
+        "result": "choices[0].image.images[0]"
+    }
+}
