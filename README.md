@@ -10,7 +10,7 @@ A Windows clipboard transformation utility that uses AI models to process clipbo
 - **Custom Filters**: Create custom transformation filters with your own prompts
 - **System Tray Integration**: Runs in the background with system tray icon
 - **Hotkey Support**: Press `Win+Alt+V` to show filter menu and process clipboard
-- **Persistent Configuration**: Settings saved to `config.ini` file
+- **Persistent Configuration**: Settings saved to `%APPDATA%\cbfilter\config.json` file
 
 ## Supported Transformations
 

@@ -53,6 +53,8 @@ wstring g_language = L"ja";              // Default language: Japanese
 // Custom window messages
 constexpr UINT WM_APP_TRAY = WM_APP + 10;  // System tray notification message
 constexpr UINT WM_APP_FILTER_COMPLETE = WM_APP + 11;  // Filter execution complete message
+constexpr UINT WM_APP_MENU_CLOSE = WM_APP + 12;  // Filter menu close message (sent to parent)
+constexpr UINT WM_APP_MENU_SELECTED = WM_APP + 13;  // Filter menu item selected (sent to menu window itself)
 
 // Timer ID for progress window
 constexpr UINT_PTR TIMER_ID_PROGRESS = 1;
@@ -2843,6 +2845,7 @@ struct FilterMenuState {
     int selectedIndex{};        // Currently selected item (0-based)
     int result{-1};             // Selected filter index or -1 if cancelled
     HWND hwndPreviousActive{};  // Window to restore focus to
+    HWND hwndParent{};          // Parent window (main window) to send close message to
 };
 
 /**
@@ -2957,22 +2960,39 @@ LRESULT CALLBACK FilterMenuWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         int idx = (y - 4) / itemHeight;
         if (idx >= 0 && idx < static_cast<int>(st->filterIndices.size())) {
             st->result = st->filterIndices[idx];
-            DestroyWindow(hwnd);
+            LogLine(L"FilterMenuWndProc: WM_LBUTTONDOWN selected index=" + to_wstring(st->result));
+            // Post message to self to exit message loop before destroying window
+            PostMessageW(hwnd, WM_APP_MENU_SELECTED, 0, 0);
         }
         return 0;
     }
+    case WM_APP_MENU_SELECTED:
+        // Menu item was selected, close the window
+        LogLine(L"FilterMenuWndProc: WM_APP_MENU_SELECTED received, destroying window");
+        DestroyWindow(hwnd);
+        return 0;
     case WM_ACTIVATE:
-        // Close the menu when it loses focus
-        if (LOWORD(wParam) == WA_INACTIVE) {
+        // Close the menu when it loses focus (but only if no item was selected)
+        if (LOWORD(wParam) == WA_INACTIVE && st->result < 0) {
             st->result = -1;
+            if (st->hwndParent) {
+                PostMessageW(st->hwndParent, WM_APP_MENU_CLOSE, 0, 0);  // Notify menu close
+            }
             DestroyWindow(hwnd);
         }
         return 0;
     case WM_CLOSE:
-        st->result = -1;
+        // Only set result to -1 if no item was selected
+        if (st->result < 0) {
+            st->result = -1;
+        }
+        if (st && st->hwndParent) {
+            PostMessageW(st->hwndParent, WM_APP_MENU_CLOSE, 0, 0);  // Notify menu close
+        }
         DestroyWindow(hwnd);
         return 0;
     case WM_DESTROY:
+        LogLine(L"FilterMenuWndProc: WM_DESTROY");
         if (g_filterMenuWnd == hwnd) g_filterMenuWnd = nullptr;
         return 0;
     }
@@ -3005,6 +3025,7 @@ bool ShowFilterMenuAndRun(HWND hwnd, HWND hwndPreviousActive = nullptr) {
     ClipboardType ct = DetectClipboard();
     FilterMenuState st;
     st.hwndPreviousActive = hwndPreviousActive;
+    st.hwndParent = hwnd;
 
     // Build list of compatible filters
     for (size_t i = 0; i < g_filters.size(); ++i) {
@@ -3049,10 +3070,34 @@ bool ShowFilterMenuAndRun(HWND hwnd, HWND hwndPreviousActive = nullptr) {
 
     // Modal message loop
     MSG msg;
-    while (IsWindow(menuWnd) && GetMessageW(&msg, nullptr, 0, 0)) {
+    LogLine(L"ShowFilterMenuAndRun: Starting message loop");
+    bool menuClosed = false;
+    while (IsWindow(menuWnd) && !menuClosed) {
+        BOOL bRet = GetMessageW(&msg, nullptr, 0, 0);
+        if (bRet == 0) {
+            LogLine(L"ShowFilterMenuAndRun: GetMessage returned 0 (WM_QUIT)");
+            break;  // WM_QUIT
+        }
+        if (bRet == -1) {
+            LogLine(L"ShowFilterMenuAndRun: GetMessage returned -1 (error)");
+            break;  // Error
+        }
+        LogLine(L"ShowFilterMenuAndRun: Received message=" + to_wstring(msg.message));
+        if (msg.message == WM_APP_MENU_CLOSE || msg.message == WM_APP_MENU_SELECTED) {
+            LogLine(L"ShowFilterMenuAndRun: Received menu close message, breaking loop");
+            menuClosed = true;
+            // Still dispatch the message so WM_APP_MENU_SELECTED can be handled
+            if (msg.message == WM_APP_MENU_SELECTED) {
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+            break;  // Menu closed
+        }
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
+
+    LogLine(L"ShowFilterMenuAndRun: Message loop ended, st.result=" + to_wstring(st.result));
 
     // Clear the global menu window reference
     if (g_filterMenuWnd == menuWnd) {
@@ -3061,10 +3106,12 @@ bool ShowFilterMenuAndRun(HWND hwnd, HWND hwndPreviousActive = nullptr) {
 
     // Check if a filter was selected
     if (st.result >= 0 && st.result < static_cast<int>(g_filters.size())) {
+        LogLine(L"ShowFilterMenuAndRun: Executing filter index=" + to_wstring(st.result));
         ShowProgressAndRunFilter(hwnd, g_filters[st.result], hwndPreviousActive);
         return true;
     }
 
+    LogLine(L"ShowFilterMenuAndRun: No filter selected, returning false");
     return false;
 }
 
