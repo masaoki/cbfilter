@@ -1511,12 +1511,12 @@ bool IsValidHotkeyVK(UINT vk) {
 struct SetupDialogState {
     int result{};
     wstring languageCode;
-    bool shift{}, ctrl{}, alt{}, win{};
+    UINT mods{};
     UINT vkCode{ 'V' };
     size_t providerIndex{};
     wstring serverUrl;
     wstring apiKey;
-    HWND hLang{}, hShift{}, hCtrl{}, hAlt{}, hWin{}, hKeyLabel{}, hKeyButton{}, hProvider{}, hServer{}, hApiKey{};
+    HWND hLang{}, hKeyLabel{}, hKeyButton{}, hProvider{}, hServer{}, hApiKey{};
 };
 
 /**
@@ -1796,11 +1796,7 @@ bool PerformInitialSetup(const SetupDialogState& st, wstring& err) {
         if (idx >= g_models.size()) idx = 0;
         f.modelIndex = idx;
     }
-    g_hotkeyModifiers = 0;
-    if (st.shift) g_hotkeyModifiers |= MOD_SHIFT;
-    if (st.ctrl) g_hotkeyModifiers |= MOD_CONTROL;
-    if (st.alt) g_hotkeyModifiers |= MOD_ALT;
-    if (st.win) g_hotkeyModifiers |= MOD_WIN;
+    g_hotkeyModifiers = st.mods;
     g_hotkeyKey = st.vkCode;
     SaveConfig();
     return true;
@@ -1817,11 +1813,7 @@ void CollectSetupFromUI(SetupDialogState* st) {
         const auto& langs = SupportedLanguages();
         if (idx < langs.size()) st->languageCode = langs[idx].first;
     }
-    st->shift = Button_GetCheck(st->hShift) == BST_CHECKED;
-    st->ctrl = Button_GetCheck(st->hCtrl) == BST_CHECKED;
-    st->alt = Button_GetCheck(st->hAlt) == BST_CHECKED;
-    st->win = Button_GetCheck(st->hWin) == BST_CHECKED;
-    // vkCode is now set via the key input dialog, not from a text field
+    // vkCode and mods are now set via the key input dialog, not from checkboxes
     int psel = static_cast<int>(SendMessageW(st->hProvider, CB_GETCURSEL, 0, 0));
     if (psel >= 0) st->providerIndex = static_cast<size_t>(SendMessageW(st->hProvider, CB_GETITEMDATA, psel, 0));
     wchar_t buf[512];
@@ -1959,9 +1951,9 @@ LRESULT CALLBACK SetupDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(st));
         int m = 12, y = m, lw = 150, cw = 320;
         wstring strLang = GetString(L"language");
-        HWND hLangLbl = CreateWindowW(L"STATIC", strLang.c_str(), WS_CHILD | WS_VISIBLE, m, y, lw, 22, hwnd, nullptr, nullptr, nullptr);
+        HWND hLangLbl = CreateWindowW(L"STATIC", strLang.c_str(), WS_CHILD | WS_VISIBLE | SS_CENTERIMAGE, m, y, lw, 22, hwnd, nullptr, nullptr, nullptr);
         SetUIFont(hLangLbl);
-        st->hLang = CreateWindowW(L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_TABSTOP, m + lw + 6, y - 2, cw, 200, hwnd, (HMENU)(INT_PTR)300, nullptr, nullptr);
+        st->hLang = CreateWindowW(L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_TABSTOP, m + lw + 6, y, cw, 200, hwnd, (HMENU)(INT_PTR)300, nullptr, nullptr);
         SetUIFont(st->hLang);
         const auto& langs = SupportedLanguages();
         int langSel = 0;
@@ -1974,39 +1966,21 @@ LRESULT CALLBACK SetupDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         y += 32;
 
         wstring strHotkey = GetString(L"hotkey");
-        HWND hHotkeyLbl = CreateWindowW(L"STATIC", strHotkey.c_str(), WS_CHILD | WS_VISIBLE, m, y, lw, 22, hwnd, nullptr, nullptr, nullptr);
+        HWND hHotkeyLbl = CreateWindowW(L"STATIC", strHotkey.c_str(), WS_CHILD | WS_VISIBLE | SS_CENTERIMAGE, m, y, lw, 22, hwnd, nullptr, nullptr, nullptr);
         SetUIFont(hHotkeyLbl);
-        st->hShift = CreateWindowW(L"BUTTON", GetString(L"hotkey_shift").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, m + lw + 6, y, 70, 22, hwnd, (HMENU)(INT_PTR)301, nullptr, nullptr);
-        st->hCtrl  = CreateWindowW(L"BUTTON", GetString(L"hotkey_ctrl").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, m + lw + 80, y, 60, 22, hwnd, (HMENU)(INT_PTR)302, nullptr, nullptr);
-        st->hAlt   = CreateWindowW(L"BUTTON", GetString(L"hotkey_alt").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, m + lw + 146, y, 60, 22, hwnd, (HMENU)(INT_PTR)303, nullptr, nullptr);
-        st->hWin   = CreateWindowW(L"BUTTON", GetString(L"hotkey_win").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, m + lw + 212, y, 60, 22, hwnd, (HMENU)(INT_PTR)304, nullptr, nullptr);
-        SetUIFont(st->hShift); SetUIFont(st->hCtrl); SetUIFont(st->hAlt); SetUIFont(st->hWin);
-        CheckDlgButton(hwnd, 301, st->shift ? BST_CHECKED : BST_UNCHECKED);
-        CheckDlgButton(hwnd, 302, st->ctrl ? BST_CHECKED : BST_UNCHECKED);
-        CheckDlgButton(hwnd, 303, st->alt ? BST_CHECKED : BST_UNCHECKED);
-        CheckDlgButton(hwnd, 304, st->win ? BST_CHECKED : BST_UNCHECKED);
-        y += 28;
-
-        UINT mods = 0;
-        if (st->shift) mods |= MOD_SHIFT;
-        if (st->ctrl) mods |= MOD_CONTROL;
-        if (st->alt) mods |= MOD_ALT;
-        if (st->win) mods |= MOD_WIN;
-        wstring currentKey = VKCodeToString(st->vkCode, mods);
-
-        st->hKeyLabel = CreateWindowW(L"STATIC", currentKey.c_str(), WS_CHILD | WS_VISIBLE | SS_CENTER | WS_BORDER,
-            m + lw + 6, y, 160, 22, hwnd, nullptr, nullptr, nullptr);
+        wstring currentKey = VKCodeToString(st->vkCode, st->mods);
+        st->hKeyLabel = CreateWindowW(L"STATIC", currentKey.c_str(), WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER,
+            m + lw + 6, y - 1, 160, 24, hwnd, nullptr, nullptr, nullptr);
         SetUIFont(st->hKeyLabel);
-
         st->hKeyButton = CreateWindowW(L"BUTTON", L"Change Key...", WS_CHILD | WS_VISIBLE | WS_TABSTOP,
-            m + lw + 172, y, 100, 22, hwnd, (HMENU)(INT_PTR)305, nullptr, nullptr);
+            m + lw + 172, y - 1, 100, 24, hwnd, (HMENU)(INT_PTR)305, nullptr, nullptr);
         SetUIFont(st->hKeyButton);
         y += 32;
 
         wstring strProvider = GetString(L"provider");
-        HWND hProvLbl = CreateWindowW(L"STATIC", strProvider.c_str(), WS_CHILD | WS_VISIBLE, m, y, lw, 22, hwnd, nullptr, nullptr, nullptr);
+        HWND hProvLbl = CreateWindowW(L"STATIC", strProvider.c_str(), WS_CHILD | WS_VISIBLE | SS_CENTERIMAGE, m, y, lw, 22, hwnd, nullptr, nullptr, nullptr);
         SetUIFont(hProvLbl);
-        st->hProvider = CreateWindowW(L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_TABSTOP, m + lw + 6, y - 2, cw, 200, hwnd, (HMENU)(INT_PTR)306, nullptr, nullptr);
+        st->hProvider = CreateWindowW(L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_TABSTOP, m + lw + 6, y, cw, 200, hwnd, (HMENU)(INT_PTR)306, nullptr, nullptr);
         SetUIFont(st->hProvider);
         int psel = 0;
         for (size_t i = 0; i < g_providers.size(); ++i) {
@@ -2021,17 +1995,17 @@ LRESULT CALLBACK SetupDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         y += 32;
 
         wstring strServerUrl = GetString(L"server_url");
-        HWND hSrvLbl = CreateWindowW(L"STATIC", strServerUrl.c_str(), WS_CHILD | WS_VISIBLE, m, y, lw, 22, hwnd, nullptr, nullptr, nullptr);
+        HWND hSrvLbl = CreateWindowW(L"STATIC", strServerUrl.c_str(), WS_CHILD | WS_VISIBLE | SS_CENTERIMAGE, m, y, lw, 22, hwnd, nullptr, nullptr, nullptr);
         SetUIFont(hSrvLbl);
-        st->hServer = CreateWindowW(L"EDIT", st->serverUrl.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, m + lw + 6, y - 2, cw, 22, hwnd, (HMENU)(INT_PTR)307, nullptr, nullptr);
+        st->hServer = CreateWindowW(L"EDIT", st->serverUrl.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, m + lw + 6, y + 1, cw, 22, hwnd, (HMENU)(INT_PTR)307, nullptr, nullptr);
         SetUIFont(st->hServer);
         EnableCtrlA(st->hServer);
         y += 32;
 
         wstring strApiKey = GetString(L"api_key");
-        HWND hApiLbl = CreateWindowW(L"STATIC", strApiKey.c_str(), WS_CHILD | WS_VISIBLE, m, y, lw, 22, hwnd, nullptr, nullptr, nullptr);
+        HWND hApiLbl = CreateWindowW(L"STATIC", strApiKey.c_str(), WS_CHILD | WS_VISIBLE | SS_CENTERIMAGE, m, y, lw, 22, hwnd, nullptr, nullptr, nullptr);
         SetUIFont(hApiLbl);
-        st->hApiKey = CreateWindowW(L"EDIT", st->apiKey.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, m + lw + 6, y - 2, cw, 22, hwnd, (HMENU)(INT_PTR)308, nullptr, nullptr);
+        st->hApiKey = CreateWindowW(L"EDIT", st->apiKey.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, m + lw + 6, y + 1, cw, 22, hwnd, (HMENU)(INT_PTR)308, nullptr, nullptr);
         SetUIFont(st->hApiKey);
         EnableCtrlA(st->hApiKey);
         y += 44;
@@ -2061,14 +2035,8 @@ LRESULT CALLBACK SetupDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             }
 
             // Test hotkey registration before saving
-            UINT testMods = 0;
-            if (st->shift) testMods |= MOD_SHIFT;
-            if (st->ctrl) testMods |= MOD_CONTROL;
-            if (st->alt) testMods |= MOD_ALT;
-            if (st->win) testMods |= MOD_WIN;
-
-            if (!RegisterHotKey(hwnd, HOTKEY_ID + 1, testMods | MOD_NOREPEAT, st->vkCode)) {
-                wstring keyStr = VKCodeToString(st->vkCode, testMods);
+            if (!RegisterHotKey(hwnd, HOTKEY_ID + 1, st->mods | MOD_NOREPEAT, st->vkCode)) {
+                wstring keyStr = VKCodeToString(st->vkCode, st->mods);
                 wstring errMsg = L"Cannot register hotkey: " + keyStr + L"\n"
                                + L"The hotkey may already be in use.\n"
                                + L"Please choose a different key combination.";
@@ -2119,23 +2087,11 @@ LRESULT CALLBACK SetupDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
         if (id == 305) { // Change Key button
             UINT vk = st->vkCode;
-            UINT mods = 0;
-            if (Button_GetCheck(st->hShift) == BST_CHECKED) mods |= MOD_SHIFT;
-            if (Button_GetCheck(st->hCtrl) == BST_CHECKED) mods |= MOD_CONTROL;
-            if (Button_GetCheck(st->hAlt) == BST_CHECKED) mods |= MOD_ALT;
-            if (Button_GetCheck(st->hWin) == BST_CHECKED) mods |= MOD_WIN;
+            UINT mods = st->mods;
 
             if (ShowHotkeyInputDialog(hwnd, vk, mods) == 1) {
                 st->vkCode = vk;
-                // Update modifier checkboxes
-                CheckDlgButton(hwnd, 301, (mods & MOD_SHIFT) ? BST_CHECKED : BST_UNCHECKED);
-                CheckDlgButton(hwnd, 302, (mods & MOD_CONTROL) ? BST_CHECKED : BST_UNCHECKED);
-                CheckDlgButton(hwnd, 303, (mods & MOD_ALT) ? BST_CHECKED : BST_UNCHECKED);
-                CheckDlgButton(hwnd, 304, (mods & MOD_WIN) ? BST_CHECKED : BST_UNCHECKED);
-                st->shift = (mods & MOD_SHIFT) != 0;
-                st->ctrl = (mods & MOD_CONTROL) != 0;
-                st->alt = (mods & MOD_ALT) != 0;
-                st->win = (mods & MOD_WIN) != 0;
+                st->mods = mods;
                 // Update key label
                 wstring keyStr = VKCodeToString(vk, mods);
                 SetWindowTextW(st->hKeyLabel, keyStr.c_str());
@@ -2191,17 +2147,14 @@ int ShowModelDialog(HWND parent, ModelConfig& model, size_t index) {
 int ShowSetupDialog() {
     SetupDialogState st{};
     st.languageCode = g_language;
-    st.shift = (g_hotkeyModifiers & MOD_SHIFT) != 0;
-    st.ctrl = (g_hotkeyModifiers & MOD_CONTROL) != 0;
-    st.alt = (g_hotkeyModifiers & MOD_ALT) != 0;
-    st.win = (g_hotkeyModifiers & MOD_WIN) != 0;
+    st.mods = g_hotkeyModifiers;
     st.vkCode = g_hotkeyKey;
     st.providerIndex = 0;
     if (!g_models.empty()) st.serverUrl = g_models.front().serverUrl;
     st.apiKey = L"";
     wstring title = GetString(L"initial_setup");
     HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_CONTROLPARENT, kSetupClass, title.c_str(),
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 520, 330, nullptr, nullptr, g_hInst, &st);
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, 520, 280, nullptr, nullptr, g_hInst, &st);
     ShowWindow(dlg, SW_SHOWNORMAL);
     MSG msg;
     while (IsWindow(dlg) && GetMessageW(&msg, nullptr, 0, 0)) {
