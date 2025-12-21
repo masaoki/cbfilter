@@ -42,7 +42,14 @@ build.bat debug
 
 ## 設定
 
-初回起動時に設定ダイアログが表示されます。これらのファイルを直接編集するか、設定ダイアログを使用できます。
+初回起動時に設定ダイアログが表示されます。設定ダイアログでAPIプロバイダーとAPIキーを設定して接続テストをすると、モデル一覧を自動的に取得して、できるだけ安価なモデルをデフォルトで設定します。
+これらのファイルを直接編集するか、設定ダイアログを使用できます。
+
+<figure>
+<img src="cbfilter-setting-ja.png" alt="初期設定ダイアログ">
+<figcaption>初期設定ダイアログ</figcaption>
+</figure>
+
 設定は `%APPDATA%\cbfilter\config.json` に保存されます。設定ファイルが存在しない場合にのみ設定ダイアログが表示されます。
 
 ### 言語設定
@@ -74,7 +81,7 @@ build.bat debug
 各モデルには次の情報が必要です：
 - **名称**: モデルの表示名
 - **サーバーURL**: API エンドポイント（例：`https://api.openai.com/v1`）
-- **モデル名**: モデル識別子（例：`gpt-5.1`、`gpt-image-1`）
+- **モデル名**: モデル識別子（例：`gpt-5.2`、`gpt-image-1.5`）
 - **APIキー**: API の認証キー
 
 ### フィルター設定
@@ -101,6 +108,16 @@ build.bat debug
    - クリップボードは変換後の内容に置換される
    - 結果は自動的に貼り付けられる（Ctrl+V の模倣）
 
+<figure>
+<img src="cbfilter-text-to-text.gif" alt="日本語から英語に翻訳">
+<figcaption>例1. 日本語から英語に翻訳</figcaption>
+</figure>
+
+<figure>
+<img src="cbfilter-image-to-text.gif" alt="スクリーンショットからデータ抽出">
+<figcaption>例2. スクリーンショットからデータ抽出</figcaption>
+</figure>
+
 4. **通知領域メニュー**:
    - 右クリック: 設定メニューを表示
    - ダブルクリック: 設定ウィンドウを開く
@@ -112,7 +129,7 @@ build.bat debug
 
 ## API 互換性
 
-本アプリは OpenAI API 形式、または Google Gemini API 形式と互換性があります。API 構造はテンプレート `apidefs/<Provider_Name>.json` ファイルの中にあります。現在 OpenAI、Gemini、OpenRouter の設定が含まれています。OpenAI の設定は LiteLLM Proxy、Requesty など OpenAI 互換 API の大半に適合します。有用な API プロバイダ定義テンプレートを作成した場合はお知らせください。
+本アプリは OpenAI API 形式、 Anthropic API 形式または Google Gemini API 形式と互換性があります。API 構造はテンプレート `apidefs/<Provider_Name>.json` ファイルの中にあります。現在 OpenAI、Anthropic、Gemini、OpenRouter の設定が含まれています。OpenAI の設定は LiteLLM Proxy、Requesty など OpenAI 互換 API の大半に適合します。有用な API プロバイダ定義テンプレートを作成した場合はお知らせください。
 
 ## ライセンス
 

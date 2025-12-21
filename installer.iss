@@ -1,10 +1,12 @@
+#define CBFilterVersion "1.0.3"
+
 [Setup]
 AppName=cbfilter
-AppVersion=1.0.0
+AppVersion={#CBFilterVersion}
 DefaultDirName={autopf}\cbfilter
 DefaultGroupName=cbfilter
 OutputDir=build
-OutputBaseFilename=cbfilter-setup
+OutputBaseFilename=cbfilter-{#CBFilterVersion}
 Compression=lzma2
 SolidCompression=yes
 DisableDirPage=no
@@ -52,10 +54,17 @@ Name: "{group}\\cbfilter"; Filename: "{app}\\cbfilter.exe"; IconFilename: "{app}
 Name: "{commondesktop}\\cbfilter"; Filename: "{app}\\cbfilter.exe"; IconFilename: "{app}\\cbfilter.ico"; Tasks: desktopicon
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional tasks:"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
+Name: "autostart"; Description: "{cm:AutoStartProgram,cbfilter}"
+
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
+  ValueType: string; ValueName: "cbfilter"; \
+  ValueData: """{app}\cbfilter.exe"""; \
+  Tasks: autostart; Flags: uninsdeletevalue
 
 [Run]
-Filename: "{app}\\cbfilter.exe"; Description: "Launch cbfilter"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\\cbfilter.exe"; Description: "{cm:LaunchProgram,cbfilter}"; Flags: postinstall nowait skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{userappdata}\\cbfilter"

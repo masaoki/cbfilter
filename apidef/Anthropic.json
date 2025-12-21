@@ -1,0 +1,60 @@
+{
+    "default-endpoint": "https://api.anthropic.com/v1",
+    "models": {
+        "endpoint": "/models",
+        "method": "GET",
+        "headers": {
+            "X-Api-Key": "<<api_key>>"
+        },
+        "result": "data"
+    },
+    "Text-Text": {
+        "endpoint": "/messages",
+        "headers": {
+            "X-Api-Key": "<<api_key>>",
+            "Content-Type": "application/json"
+        },
+        "payload": {
+            "model": "<<model>>",
+            "max_tokens": 20000,
+            "system": "<<system_prompt>>",
+            "messages": [{
+                "role": "user",
+                "content": "<<prompt>>"
+            }]
+        },
+        "result": "content[0].text"
+    },
+    "Image-Text": {
+        "endpoint": "/messages",
+        "headers": {
+            "X-Api-Key": "<<api_key>>",
+            "Content-Type": "application/json"
+        },
+        "payload": {
+            "model": "<<model>>",
+            "max_tokens": 20000,
+            "system": "<<system_prompt>>",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "<<prompt>>"
+                        },
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/png",
+                                "data": "<<image_base64>>"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "result": "content[0].text"
+    }
+}

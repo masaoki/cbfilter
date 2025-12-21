@@ -468,7 +468,7 @@ wstring JsonEscape(const wstring& s) {
     return out;
 }
 
-wstring ReplacePlaceholders(const wstring& src, const ModelConfig& m, const wstring& systemPrompt, const wstring& prompt, const wstring& imageB64, const wstring& imageDataUrl, bool jsonEsc) {
+wstring ReplacePlaceholders(const wstring& src, const ModelConfig& m, const wstring& systemPrompt, const wstring& prompt, const wstring& imageB64, bool jsonEsc) {
     auto esc = [&](const wstring& v) { return jsonEsc ? JsonEscape(v) : v; };
     wstring out = src;
     out = ReplaceAll(out, L"<<model>>", esc(m.modelName));
@@ -476,7 +476,8 @@ wstring ReplacePlaceholders(const wstring& src, const ModelConfig& m, const wstr
     out = ReplaceAll(out, L"<<prompt>>", esc(prompt));
     out = ReplaceAll(out, L"<<input_text>>", esc(prompt));
     out = ReplaceAll(out, L"<<api_key>>", esc(m.apiKey));
-    out = ReplaceAll(out, L"<<image_url>>", esc(imageDataUrl));
+    out = ReplaceAll(out, L"<<image_url>>", esc(L"data:image/png;base64," + imageB64));
+    out = ReplaceAll(out, L"<<image_base64>>", esc(imageB64));
     out = ReplaceAll(out, L"<<image>>", esc(imageB64));
     return out;
 }
@@ -1051,28 +1052,88 @@ wstring ExtractContent(const wstring& json) {
  * @brief Prepare endpoint for HTTP request
  * @param serverUrl Server URL
  * @param tplPath Template path
- * @param host Host name
- * @param path Path
- * @param useHttps Use HTTPS
+ * @param host Host name (output)
+ * @param path Path (output)
+ * @param port Port number (output, 0 means default port)
+ * @param useHttps Use HTTPS (output)
  * @return true if endpoint is valid, false otherwise
  */
-bool PrepareEndpoint(const wstring& serverUrl, const wstring& tplPath, wstring& host, wstring& path, bool& useHttps) {
-    host = serverUrl;
-    path = tplPath;
-    if (path.empty()) path = L"/v1/chat/completions";
-    // If template path is absolute URL, override host/path
-    if (path.rfind(L"http://", 0) == 0 || path.rfind(L"https://", 0) == 0) {
-        host = path;
-        path = L"";
+bool PrepareEndpoint(const wstring& serverUrl, const wstring& tplPath, wstring& host, wstring& path, INTERNET_PORT& port, bool& useHttps) {
+    wstring fullUrl = serverUrl;
+    wstring endpointPath = tplPath;
+    
+    // If template path is absolute URL, use it as the full URL
+    if (endpointPath.rfind(L"http://", 0) == 0 || endpointPath.rfind(L"https://", 0) == 0) {
+        fullUrl = endpointPath;
+        endpointPath = L"";
     }
-    if (host.rfind(L"https://", 0) == 0) { host = host.substr(8); useHttps = true; }
-    else if (host.rfind(L"http://", 0) == 0) { host = host.substr(7); useHttps = false; }
-    size_t slash = host.find(L'/');
-    if (slash != wstring::npos) {
-        path = host.substr(slash) + (path.empty() ? L"" : path);
-        host = host.substr(0, slash);
+    
+    // Ensure fullUrl has a scheme
+    if (fullUrl.find(L"://") == wstring::npos) {
+        fullUrl = L"https://" + fullUrl;
     }
-    if (!path.empty() && path.front() != L'/') path = L"/" + path;
+    
+    // Use WinHttpCrackUrl to parse the URL properly
+    URL_COMPONENTSW urlComp = {};
+    urlComp.dwStructSize = sizeof(urlComp);
+    urlComp.dwSchemeLength = (DWORD)-1;
+    urlComp.dwHostNameLength = (DWORD)-1;
+    urlComp.dwUserNameLength = (DWORD)-1;
+    urlComp.dwPasswordLength = (DWORD)-1;
+    urlComp.dwUrlPathLength = (DWORD)-1;
+    urlComp.dwExtraInfoLength = (DWORD)-1;
+    
+    wstring urlBuffer = fullUrl;
+    if (!WinHttpCrackUrl(urlBuffer.c_str(), (DWORD)urlBuffer.length(), 0, &urlComp)) {
+        return false;
+    }
+    
+    // Extract scheme
+    if (urlComp.nScheme == INTERNET_SCHEME_HTTPS) {
+        useHttps = true;
+        port = urlComp.nPort != 0 ? urlComp.nPort : INTERNET_DEFAULT_HTTPS_PORT;
+    } else if (urlComp.nScheme == INTERNET_SCHEME_HTTP) {
+        useHttps = false;
+        port = urlComp.nPort != 0 ? urlComp.nPort : INTERNET_DEFAULT_HTTP_PORT;
+    } else {
+        // Default to HTTPS for unknown schemes
+        useHttps = true;
+        port = INTERNET_DEFAULT_HTTPS_PORT;
+    }
+    
+    // Extract host
+    if (urlComp.dwHostNameLength > 0) {
+        host = wstring(urlComp.lpszHostName, urlComp.dwHostNameLength);
+    } else {
+        return false;
+    }
+    
+    // Extract path
+    wstring urlPath;
+    if (urlComp.dwUrlPathLength > 0) {
+        urlPath = wstring(urlComp.lpszUrlPath, urlComp.dwUrlPathLength);
+    }
+    
+    // Combine URL path with endpoint path
+    if (!endpointPath.empty()) {
+        if (urlPath.empty() || urlPath.back() != L'/') {
+            urlPath += L"/";
+        }
+        // Remove leading slash from endpointPath if present
+        if (endpointPath.front() == L'/') {
+            endpointPath = endpointPath.substr(1);
+        }
+        urlPath += endpointPath;
+    } else if (urlPath.empty()) {
+        urlPath = L"/v1/chat/completions"; // Default path
+    }
+    
+    // Ensure path starts with /
+    if (urlPath.front() != L'/') {
+        urlPath = L"/" + urlPath;
+    }
+    
+    path = urlPath;
     return !host.empty();
 }
 
@@ -1086,8 +1147,8 @@ bool PrepareEndpoint(const wstring& serverUrl, const wstring& tplPath, wstring& 
  * @param imageDataUrl Image data URL
  * @return Body string
  */
-wstring BuildBodyFromTemplate(const TemplateDefinition& tpl, const ModelConfig& m, const wstring& systemPrompt, const wstring& prompt, const wstring& imageB64, const wstring& imageDataUrl) {
-    return ReplacePlaceholders(tpl.payload, m, systemPrompt, prompt, imageB64, imageDataUrl, true);
+wstring BuildBodyFromTemplate(const TemplateDefinition& tpl, const ModelConfig& m, const wstring& systemPrompt, const wstring& prompt, const wstring& imageB64) {
+    return ReplacePlaceholders(tpl.payload, m, systemPrompt, prompt, imageB64, true);
 }
 
 /**
@@ -1100,10 +1161,10 @@ wstring BuildBodyFromTemplate(const TemplateDefinition& tpl, const ModelConfig& 
  * @param imageDataUrl Image data URL
  * @return Header string
  */
-wstring BuildHeaderString(const TemplateDefinition& tpl, const ModelConfig& m, const wstring& systemPrompt, const wstring& prompt, const wstring& imageB64, const wstring& imageDataUrl) {
+wstring BuildHeaderString(const TemplateDefinition& tpl, const ModelConfig& m, const wstring& systemPrompt, const wstring& prompt, const wstring& imageB64) {
     wstring header;
     for (const auto& kv : tpl.headers) {
-        wstring val = ReplacePlaceholders(kv.second, m, systemPrompt, prompt, imageB64, imageDataUrl, false);
+        wstring val = ReplacePlaceholders(kv.second, m, systemPrompt, prompt, imageB64, false);
         header += kv.first + L": " + val + L"\r\n";
     }
     return header;
@@ -1118,7 +1179,7 @@ wstring BuildHeaderString(const TemplateDefinition& tpl, const ModelConfig& m, c
 wstring BuildHeaderString(const vector<pair<wstring, wstring>>& headers, const ModelConfig& m) {
     wstring header;
     for (const auto& kv : headers) {
-        wstring val = ReplacePlaceholders(kv.second, m, L"", L"", L"", L"", false);
+        wstring val = ReplacePlaceholders(kv.second, m, L"", L"", L"", false);
         header += kv.first + L": " + val + L"\r\n";
     }
     return header;
@@ -1135,12 +1196,16 @@ wstring BuildHeaderString(const vector<pair<wstring, wstring>>& headers, const M
  * @param err Error message
  * @return Result of the request
  */
-wstring HttpRequestWithHeaders(const wstring& host, const wstring& path, bool useHttps, const wstring& headers, const string& body, const wstring& method, wstring* err) {
+wstring HttpRequestWithHeaders(const wstring& host, const wstring& path, INTERNET_PORT port, bool useHttps, const wstring& headers, const string& body, const wstring& method, wstring* err) {
     wstring result;
     auto setErr = [&](const wstring& m) { if (err) *err = m; };
     HINTERNET hs = WinHttpOpen(L"cbfilter/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hs) { setErr(L"WinHttpOpen failed: " + to_wstring(GetLastError())); return L""; }
-    HINTERNET hc = WinHttpConnect(hs, host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
+    // Use provided port, or default based on scheme if port is 0
+    if (port == 0) {
+        port = useHttps ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_HTTP_PORT;
+    }
+    HINTERNET hc = WinHttpConnect(hs, host.c_str(), port, 0);
     if (!hc) { setErr(L"WinHttpConnect failed: " + to_wstring(GetLastError())); WinHttpCloseHandle(hs); return L""; }
     DWORD flags = useHttps ? WINHTTP_FLAG_SECURE : 0;
     HINTERNET hr = WinHttpOpenRequest(hc, method.c_str(), path.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, flags);
@@ -1266,16 +1331,16 @@ string BuildMultipartBody(const wstring& boundary, const wstring& model, const w
  * @param imageDataUrl Image data URL
  * @return API call result
  */
-ApiCallResult CallTemplate(const TemplateDefinition& tpl, const ModelConfig& m, const wstring& systemPrompt, const wstring& prompt, const wstring& imageB64, const wstring& imageDataUrl) {
+ApiCallResult CallTemplate(const TemplateDefinition& tpl, const ModelConfig& m, const wstring& systemPrompt, const wstring& prompt, const wstring& imageB64) {
     ApiCallResult result;
-    wstring endpoint = ReplacePlaceholders(tpl.endpoint, m, systemPrompt, prompt, imageB64, imageDataUrl, false);
-    wstring host, path; bool useHttps = true;
-    if (!PrepareEndpoint(m.serverUrl, endpoint, host, path, useHttps)) {
+    wstring endpoint = ReplacePlaceholders(tpl.endpoint, m, systemPrompt, prompt, imageB64, false);
+    wstring host, path; INTERNET_PORT port = 0; bool useHttps = true;
+    if (!PrepareEndpoint(m.serverUrl, endpoint, host, path, port, useHttps)) {
         LogLine(L"PrepareEndpoint failed");
         return result;
     }
-    wstring body = BuildBodyFromTemplate(tpl, m, systemPrompt, prompt, imageB64, imageDataUrl);
-    wstring headers = BuildHeaderString(tpl, m, systemPrompt, prompt, imageB64, imageDataUrl);
+    wstring body = BuildBodyFromTemplate(tpl, m, systemPrompt, prompt, imageB64);
+    wstring headers = BuildHeaderString(tpl, m, systemPrompt, prompt, imageB64);
     string utf8;
     wstring adjHeaders = headers;
     if (ContainsNoCase(headers, L"multipart/form-data")) {
@@ -1287,11 +1352,12 @@ ApiCallResult CallTemplate(const TemplateDefinition& tpl, const ModelConfig& m, 
     }
     LogLine(L"request host: " + host);
     LogLine(L"request path: " + path);
+    LogLine(L"request port: " + to_wstring(port));
     wstring wbody; int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
     if (wlen > 1) { wbody.resize(wlen - 1); MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, wbody.data(), wlen - 1); }
     LogLine(L"body: " + wbody);
     wstring err;
-    wstring resp = HttpRequestWithHeaders(host, path, useHttps, adjHeaders, utf8, L"POST", &err);
+    wstring resp = HttpRequestWithHeaders(host, path, port, useHttps, adjHeaders, utf8, L"POST", &err);
     if (!err.empty()) LogLine(L"template request error: " + err);
     if (resp.empty()) return result;
     if (tpl.output == IOType::Text) {
@@ -1357,8 +1423,7 @@ bool RunFilter(const FilterDefinition& f) {
                 ithing, othing);
         }();
         wstring promptText = f.prompt + L"\n\n" + textInput;
-        wstring imageDataUrl = imageB64.empty() ? L"" : (L"data:image/png;base64," + imageB64);
-        ApiCallResult res = CallTemplate(*tpl, m, systemPrompt, promptText, imageB64, imageDataUrl);
+        ApiCallResult res = CallTemplate(*tpl, m, systemPrompt, promptText, imageB64);
         if (tpl->output == IOType::Text) {
             if (res.text.empty()) { LogLine(L"fail: template returned empty text"); return false; }
             SetClipboardText(res.text);
@@ -1680,17 +1745,17 @@ bool RegexMatchNoCase(const wstring& text, const wstring& pattern) {
 bool FetchModels(const ApiProvider& provider, const wstring& serverUrl, const wstring& apiKey, vector<wstring>& models, wstring& err) {
     if (provider.modelsEndpoint.empty()) { err = L"models endpoint not defined"; return false; }
     ModelConfig dummy{ L"", serverUrl, L"", apiKey, provider.id };
-    wstring endpoint = ReplacePlaceholders(provider.modelsEndpoint, dummy, L"", L"", L"", L"", false);
-    wstring host, path; bool useHttps = true;
-    if (!PrepareEndpoint(serverUrl, endpoint, host, path, useHttps)) { err = L"PrepareEndpoint failed"; return false; }
+    wstring endpoint = ReplacePlaceholders(provider.modelsEndpoint, dummy, L"", L"", L"", false);
+    wstring host, path; INTERNET_PORT port = 0; bool useHttps = true;
+    if (!PrepareEndpoint(serverUrl, endpoint, host, path, port, useHttps)) { err = L"PrepareEndpoint failed"; return false; }
     wstring headers = BuildHeaderString(provider.modelsHeaders, dummy);
-    string body = ToUtf8(ReplacePlaceholders(provider.modelsPayload, dummy, L"", L"", L"", L"", false));
+    string body = ToUtf8(ReplacePlaceholders(provider.modelsPayload, dummy, L"", L"", L"",false));
     wstring resp;
     if (!provider.modelsMethod.empty() && RegexMatchNoCase(provider.modelsMethod, L"post")) {
-        resp = HttpRequestWithHeaders(host, path, useHttps, headers, body, L"POST", &err);
+        resp = HttpRequestWithHeaders(host, path, port, useHttps, headers, body, L"POST", &err);
     } else {
         static const string emptyBody;
-        resp = HttpRequestWithHeaders(host, path, useHttps, headers, emptyBody, L"GET", &err);
+        resp = HttpRequestWithHeaders(host, path, port, useHttps, headers, emptyBody, L"GET", &err);
     }
     if (resp.empty()) return false;
     try {
@@ -1758,7 +1823,7 @@ bool PerformInitialSetup(const SetupDialogState& st, wstring& err) {
     vector<wstring> modelList;
     if (!FetchModels(provider, st.serverUrl, st.apiKey, modelList, err)) return false;
     if (modelList.empty()) { err = L"No models"; return false; }
-    vector<wstring> patternsLLM{ L"gpt-.*-nano", L"gemini-.*-flash-lite", L"gpt-.*-mini", L"gemini-.*-flash", L"gpt-.*", L"claude-.*-haiku", L"gemini-.*-pro", L"claude-.*-sonnet" };
+    vector<wstring> patternsLLM{ L"gpt-.*-nano", L"gemini-.*-flash-lite", L"gpt-.*-mini", L"gemini-.*-flash", L"gpt-.*", L"claude.*haiku", L"gemini-.*-pro", L"claude.*sonnet" };
     vector<wstring> patternsImage{ L"gpt.*image.*mini", L"gemini.*image", L"gpt.*image" };
     wstring tt = PickModelByPatterns(modelList, patternsLLM);
     wstring it = PickModelByPatterns(modelList, patternsLLM);
@@ -1770,13 +1835,10 @@ bool PerformInitialSetup(const SetupDialogState& st, wstring& err) {
     if (ii.empty()) ii = modelList.front();
 
     g_models.clear();
-    auto addModel = [&](const wstring& name, const wstring& modelName) {
-        g_models.push_back({ name, st.serverUrl, modelName, st.apiKey, provider.id });
-    };
-    addModel(L"Text/Text", tt);
-    addModel(L"Text/Image", ti);
-    addModel(L"Image/Text", it);
-    addModel(L"Image/Image", ii);
+    g_models.push_back({ tt, st.serverUrl, tt, st.apiKey, provider.id });
+    g_models.push_back({ ti, st.serverUrl, ti, st.apiKey, provider.id });
+    g_models.push_back({ it, st.serverUrl, it, st.apiKey, provider.id });
+    g_models.push_back({ ii, st.serverUrl, ii, st.apiKey, provider.id });
 
     JsonObject def = CreateDefaultConfig();
     g_language = st.languageCode.empty() ? g_language : st.languageCode;
@@ -2287,9 +2349,9 @@ LRESULT CALLBACK EditDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) 
         const int margin = 12, labelW = 160; int y = margin;
         wstring strFilterName = GetString(L"filter_name");
         CreateWindowW(L"STATIC", strFilterName.c_str(), WS_CHILD | WS_VISIBLE, margin, y, labelW, 22, hwnd, nullptr, nullptr, nullptr);
-    st->hName = CreateWindowW(L"EDIT", st->filter->title.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP,
-        margin + labelW + 6, y - 2, 400, 24, hwnd, (HMENU)(INT_PTR)100, nullptr, nullptr);
-    EnableCtrlA(st->hName);
+        st->hName = CreateWindowW(L"EDIT", st->filter->title.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP,
+            margin + labelW + 6, y - 2, 400, 24, hwnd, (HMENU)(INT_PTR)100, nullptr, nullptr);
+        EnableCtrlA(st->hName);
         y += 32;
         wstring strInputType = GetString(L"input_type");
         CreateWindowW(L"STATIC", strInputType.c_str(), WS_CHILD | WS_VISIBLE, margin, y, labelW, 22, hwnd, nullptr, nullptr, nullptr);
@@ -2320,8 +2382,8 @@ LRESULT CALLBACK EditDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) 
             (HMENU)(INT_PTR)104, nullptr, nullptr);
         wstring strPrompt = GetString(L"prompt");
         CreateWindowW(L"STATIC", strPrompt.c_str(), WS_CHILD | WS_VISIBLE, margin, y + 96, labelW, 22, hwnd, nullptr, nullptr, nullptr);
-    st->hPrompt = CreateWindowW(L"EDIT", st->filter->prompt.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | WS_TABSTOP,
-        margin, y + 120, 600, 180, hwnd, (HMENU)(INT_PTR)105, nullptr, nullptr);
+        st->hPrompt = CreateWindowW(L"EDIT", st->filter->prompt.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | WS_TABSTOP,
+            margin, y + 120, 600, 180, hwnd, (HMENU)(INT_PTR)105, nullptr, nullptr);
         g_promptOldProc = reinterpret_cast<WNDPROC>(SetWindowLongPtr(st->hPrompt, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(PromptEditProc)));
         wstring strSave = GetString(L"save");
         wstring strClose = GetString(L"close");

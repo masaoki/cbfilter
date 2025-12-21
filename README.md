@@ -42,7 +42,14 @@ build.bat debug
 
 ## Configuration
 
-On first run, the setup dialg appears. You can edit these files directly or use the settings dialog.
+On first run, the setup dialg appears. By choosing the API provider (API format template) with your API key, the most affordable models, i.e. gpt-5-nano, gemini-2.5-flash-lite, are set by default.
+You can edit these files directly or use the settings dialog.
+
+<figure>
+<img src="cbfilter-setting-en.png" alt="Setting Dialog">
+<figcaption>Initial Setting Dialog</figcaption>
+</figure>
+
 The configuration is saved as `%APPDATA%cbfilter\config.json`. The setting dialog is shown only when the config file does not exist.
 
 ### Language Settings
@@ -76,7 +83,7 @@ It is also saved in `%APPDATA%cbfilter\config.json`.
 Each model requires:
 - **Name**: Display name for the model
 - **Server URL**: API endpoint (e.g., `https://api.openai.com/v1`)
-- **Model Name**: Model identifier (e.g., `gpt-5.1`, `gpt-image-1`)
+- **Model Name**: Model identifier (e.g., `gpt-5.2`, `gpt-image-1.5`)
 - **API Key**: Authentication key for the API
 
 ### Filter Configuration
@@ -103,6 +110,16 @@ Each filter requires:
    - The clipboard will be replaced with the transformed content
    - The result will be automatically pasted (Ctrl+V simulated)
 
+<figure>
+<img src="cbfilter-text-to-text.gif" alt="Japanese to English translation">
+<figcaption>Example 1. Japanese to English translation</figcaption>
+</figure>
+
+<figure>
+<img src="cbfilter-image-to-text.gif" alt="Extract a table from screenshot">
+<figcaption>Example 2. Extract a table from screenshot</figcaption>
+</figure>
+
 4. **System tray menu**:
    - Right-click: Show settings menu
    - Double-click: Open settings window
@@ -114,7 +131,7 @@ The debug log `cbfilter.log` is created only with the debug build of `cbfilter.e
 
 ## API Compatibility
 
-This application is compatible with OpenAI API format, or Google Gemini API format.
+This application is compatible with OpenAI API format, Anthropic API format, or Google Gemini API format.
 The API structure is inside template `apidefs/<Provider_Name>.json` file.
 Currently OpenAI, Gemini, and OpenRouter configurations are included.
 OpenAI configuration will fit most of OpenAI compatible APIs like LiteLLM Proxy, Requesty, etc.
